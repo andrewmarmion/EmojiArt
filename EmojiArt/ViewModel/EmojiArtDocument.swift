@@ -13,12 +13,27 @@ class EmojiArtDocument: ObservableObject {
 
     static let palette: String = "⭐️⛈🍎🌍🥨⚾️"
 
-    @Published private var emojiArt: EmojiArtModel = EmojiArtModel()
+    // @Published // workaround for property observer problem with property wrappers
+    private var emojiArt: EmojiArtModel {
+        willSet {
+            objectWillChange.send()
+        }
+        didSet {
+            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+        }
+    }
+
+    private static let untitled = "EmojiArtDocument.Untitled"
 
     @Published private(set) var backgroundImage: UIImage?
 
     var emojis: [EmojiArtModel.Emoji] { emojiArt.emojis }
 
+
+    init() {
+        emojiArt = EmojiArtModel(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArtModel()
+        fetchBackgroundImageData()
+    }
 
     // MARK: - Intent(s)
 
