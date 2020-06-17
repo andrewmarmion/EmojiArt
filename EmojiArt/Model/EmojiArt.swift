@@ -14,7 +14,7 @@ struct EmojiArtModel: Codable {
     var backgroundURL: URL?
     var emojis = [Emoji]()
 
-    struct Emoji: Identifiable, Codable {
+    struct Emoji: Identifiable, Hashable, Codable, Equatable {
         let text: String
         var x: Int // offset from the center
         var y: Int // offset from the center
@@ -27,6 +27,17 @@ struct EmojiArtModel: Codable {
             self.y = y
             self.size = size
             self.id = id
+        }
+
+        /// Conformance to hashable
+        /// using id is enough to identify each Emoji
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+
+        /// Comformance to equatable
+        static func ==(lhs: Emoji, rhs: Emoji) -> Bool {
+            return lhs.id == rhs.id && lhs.text == rhs.text
         }
     }
 

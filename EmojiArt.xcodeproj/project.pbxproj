@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2D296C0324995C7C00826115 /* OutlineModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D296C0224995C7C00826115 /* OutlineModifier.swift */; };
+		2D296C05249977AC00826115 /* EmojiOffsetModifer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D296C04249977AC00826115 /* EmojiOffsetModifer.swift */; };
 		2D821EA5249903E900B8769D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D821EA4249903E900B8769D /* AppDelegate.swift */; };
 		2D821EA7249903E900B8769D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D821EA6249903E900B8769D /* SceneDelegate.swift */; };
 		2D821EA9249903E900B8769D /* EmojiArtDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D821EA8249903E900B8769D /* EmojiArtDocumentView.swift */; };
@@ -21,6 +23,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2D296C0224995C7C00826115 /* OutlineModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlineModifier.swift; sourceTree = "<group>"; };
+		2D296C04249977AC00826115 /* EmojiOffsetModifer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiOffsetModifer.swift; sourceTree = "<group>"; };
 		2D821EA1249903E900B8769D /* EmojiArt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmojiArt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D821EA4249903E900B8769D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		2D821EA6249903E900B8769D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -134,6 +138,8 @@
 			isa = PBXGroup;
 			children = (
 				2D9AE1AF249934D000D85462 /* AnimatableSystemFontModifier.swift */,
+				2D296C0224995C7C00826115 /* OutlineModifier.swift */,
+				2D296C04249977AC00826115 /* EmojiOffsetModifer.swift */,
 			);
 			path = ViewModifier;
 			sourceTree = "<group>";
@@ -211,11 +217,13 @@
 			files = (
 				2D821EA5249903E900B8769D /* AppDelegate.swift in Sources */,
 				2D821EA7249903E900B8769D /* SceneDelegate.swift in Sources */,
+				2D296C0324995C7C00826115 /* OutlineModifier.swift in Sources */,
 				2D821EBD24990C0900B8769D /* EmojiArtExtensions.swift in Sources */,
 				2D821EBB2499085B00B8769D /* EmojiArt.swift in Sources */,
 				2D821EA9249903E900B8769D /* EmojiArtDocumentView.swift in Sources */,
 				2D9AE1AE249931AF00D85462 /* OptionalImage.swift in Sources */,
 				2D9AE1B0249934D000D85462 /* AnimatableSystemFontModifier.swift in Sources */,
+				2D296C05249977AC00826115 /* EmojiOffsetModifer.swift in Sources */,
 				2D821EB92499041300B8769D /* EmojiArtDocument.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
