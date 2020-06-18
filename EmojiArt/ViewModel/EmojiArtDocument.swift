@@ -7,31 +7,28 @@
 //
 
 import SwiftUI
+import Combine
 
 /// View Model
 class EmojiArtDocument: ObservableObject {
 
     static let palette: String = "⭐️⛈🍎🌍🥨⚾️"
-
-    // @Published // workaround for property observer problem with property wrappers
-    private var emojiArt: EmojiArtModel {
-        willSet {
-            objectWillChange.send()
-        }
-        didSet {
-            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
-        }
-    }
-
     private static let untitled = "EmojiArtDocument.Untitled"
 
+    @Published var emojiArt: EmojiArtModel
     @Published private(set) var backgroundImage: UIImage?
 
     var emojis: [EmojiArtModel.Emoji] { emojiArt.emojis }
 
+    private var autosaveCancellable: AnyCancellable?
+    private var fetchImageCancellable: AnyCancellable?
 
     init() {
         emojiArt = EmojiArtModel(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArtModel()
+        autosaveCancellable = $emojiArt.sink { emojiArt in
+            print("\(emojiArt.json?.utf8 ?? "nil")")
+            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+        }
         fetchBackgroundImageData()
     }
 
@@ -54,10 +51,12 @@ class EmojiArtDocument: ObservableObject {
         }
     }
 
-    func setBackgroundURL(_ url: URL?) {
-        emojiArt.backgroundURL = url?.imageURL
-
-        fetchBackgroundImageData()
+    var backgroundURL: URL? {
+        get { emojiArt.backgroundURL }
+        set {
+            emojiArt.backgroundURL = newValue?.imageURL
+            fetchBackgroundImageData()
+        }
     }
 
     private func fetchBackgroundImageData() {
@@ -66,31 +65,14 @@ class EmojiArtDocument: ObservableObject {
         // using guard saves the piramid of doom
         guard let url = self.emojiArt.backgroundURL else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        fetchImageCancellable?.cancel()
 
-            guard let imageData = try? Data(contentsOf: url) else { return }
+        fetchImageCancellable = URLSession.shared.dataTaskPublisher(for: url)
+            .map { data, response in UIImage(data: data) }
+            .receive(on: RunLoop.main) // Current theory is that RunLoop.main is better than DispatchQueue.main
+            .replaceError(with: nil)
+            .assign(to: \.backgroundImage, on: self) // Currently assign has a memory leak, is this the best way to do this?
 
-            guard let image = UIImage(data: imageData) else { return }
-
-            // Set the image on the main thread
-            DispatchQueue.main.async {
-                if url == self.emojiArt.backgroundURL {
-                    self.backgroundImage = image
-                }
-            }
-        }
-
-//        if let url = self.emojiArt.backgroundURL {
-//            DispatchQueue.global(qos: .userInitiated).async {
-//                if let imageData = try? Data(contentsOf: url) {
-//                    if let image = UIImage(data: imageData) {
-//                        DispatchQueue.main.async {
-//                            self.backgroundImage = image
-//                        }
-//                    }
-//                }
-//            }
-//        }
     }
 }
 
