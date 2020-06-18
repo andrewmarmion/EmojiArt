@@ -10,24 +10,30 @@ import SwiftUI
 import Combine
 
 /// View Model
-class EmojiArtDocument: ObservableObject {
+class EmojiArtDocument: ObservableObject, Identifiable, Hashable, Equatable {
+
+    let id: UUID
 
     static let palette: String = "⭐️⛈🍎🌍🥨⚾️"
     private static let untitled = "EmojiArtDocument.Untitled"
 
     @Published var emojiArt: EmojiArtModel
     @Published private(set) var backgroundImage: UIImage?
+    @Published var steadyStateZoomScale: CGFloat = 1.0
+    @Published var steadyStatePanOffset: CGSize = .zero
 
     var emojis: [EmojiArtModel.Emoji] { emojiArt.emojis }
 
     private var autosaveCancellable: AnyCancellable?
     private var fetchImageCancellable: AnyCancellable?
 
-    init() {
-        emojiArt = EmojiArtModel(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArtModel()
+    init(id: UUID? = nil) {
+        self.id = id ?? UUID()
+        let defaultsKey = "EmojiArtDocument.\(self.id.uuidString)"
+        emojiArt = EmojiArtModel(json: UserDefaults.standard.data(forKey: defaultsKey)) ?? EmojiArtModel()
         autosaveCancellable = $emojiArt.sink { emojiArt in
             print("\(emojiArt.json?.utf8 ?? "nil")")
-            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+            UserDefaults.standard.set(emojiArt.json, forKey: defaultsKey)
         }
         fetchBackgroundImageData()
     }
@@ -74,6 +80,17 @@ class EmojiArtDocument: ObservableObject {
             .assign(to: \.backgroundImage, on: self) // Currently assign has a memory leak, is this the best way to do this?
 
     }
+
+    // Conformance to Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    // Conformance to Equatable
+    static func == (lhs: EmojiArtDocument, rhs: EmojiArtDocument) -> Bool {
+        lhs.id == rhs.id
+    }
+
 }
 
 extension EmojiArtModel.Emoji {

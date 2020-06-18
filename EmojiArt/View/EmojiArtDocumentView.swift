@@ -12,31 +12,50 @@ struct EmojiArtDocumentView: View {
 
     typealias Emoji = EmojiArtModel.Emoji
 
+    private struct AlertIdentifier: Identifiable {
+        var id: Choice
+
+        enum Choice {
+            case explain
+            case confirm
+        }
+    }
+
+    @Environment(\.horizontalSizeClass) var sizeClass
+
     //MARK: - Properties
     @ObservedObject var document: EmojiArtDocument
 
     @State private var chosenPalette: String = ""
 
-    @State private var steadyStateZoomScale: CGFloat = 1.0
     @GestureState private var gestureZoomScale: CGFloat = 1.0
-
-    @State private var steadyStatePanOffset: CGSize = .zero
     @GestureState private var gesturePanOffSet: CGSize = .zero
 
     @State private var selectedEmojis = Set<Emoji>()
     @GestureState private var gestureSelectedEmoji: (offset: CGSize, emoji: Emoji?) = (.zero, nil)
 
+    @State private var showPasteAlert: AlertIdentifier?
+
+    @State private var explainBackgroundPaste: Bool = false
+    @State private var confirmBackgroundPaste: Bool = false
+
     private let defaultEmojiSize: CGFloat = 40
+
+    init(document: EmojiArtDocument) {
+        self.document = document
+        _chosenPalette = State(wrappedValue: self.document.defaultPalette)
+    }
 
     // MARK: - View
     var body: some View {
         VStack {
-            HStack {
-                PaletteChooser(document: document, chosenPalette: $chosenPalette)
+
+            HVStack {
+                PaletteChooser(document: self.document, chosenPalette: self.$chosenPalette)
                 // Emoji Selector
                 ScrollView(.horizontal, showsIndicators: true) {
                     HStack {
-                        ForEach(chosenPalette.map { String($0) }, id: \.self) { emoji in
+                        ForEach(self.chosenPalette.map { String($0) }, id: \.self) { emoji in
                             Text(emoji)
                                 .font(Font.system(size: self.defaultEmojiSize))
                                 .onDrag {
@@ -47,9 +66,6 @@ struct EmojiArtDocumentView: View {
                 }
             }
             .padding(.horizontal)
-            .onAppear {
-                self.chosenPalette = self.document.defaultPalette
-            }
 
             // Canvas
             GeometryReader { geometry in
@@ -84,18 +100,60 @@ struct EmojiArtDocumentView: View {
                 .gesture(self.panGesture())
                 .gesture(self.zoomGesture())
                 .edgesIgnoringSafeArea([.horizontal, .bottom])
-                .onReceive(self.document.$backgroundImage, perform: { image in
-                    self.zoomToFit(image, in: geometry.size)
-                })
-                    .onDrop(of: ["public.image", "public.text"], isTargeted: nil) { providers, location in
-                        var location = geometry.convert(location, from: .global)
-                        location = CGPoint(x: location.x - geometry.size.width / 2, y: location.y - geometry.size.height / 2)
-                        location = CGPoint(x: location.x - self.panOffset.width, y: location.y - self.panOffset.height)
-                        location = CGPoint(x: location.x / self.zoomScale, y: location.y / self.zoomScale)
-                        return self.drop(providers: providers, at: location)
+                .onReceive(self.document.$backgroundImage, perform: { image in self.zoomToFit(image, in: geometry.size) })
+                .onDrop(of: ["public.image", "public.text"], isTargeted: nil) { providers, location in
+                    let location = self.calculateLocation(for: geometry, at: location)
+                    return self.drop(providers: providers, at: location)
 
                 }
+                .navigationBarItems(trailing:
+                    Button(action: self.pasteURL,
+                           label: { Image(systemName: "doc.on.clipboard").imageScale(.large)}
+                    )
+                )
             }
+            .zIndex(-1)
+        }
+            // Use an enum for showing the alerts
+            .alert(item: self.$showPasteAlert) { alert -> Alert in
+                switch alert.id {
+                case .explain:
+                    return Alert(
+                        title: Text("Paste Background"),
+                        message: Text("Copy the URL of an image to the clipboard and touch this button to make it the background of the document."),
+                        dismissButton: .default(Text("OK")))
+
+                case .confirm:
+                    return Alert(
+                        title: Text("Paste Background"),
+                        message: Text("Replace your background with \(UIPasteboard.general.url?.absoluteString ?? "nothing")"),
+                        primaryButton: .default(Text("OK"), action: {
+                            self.document.backgroundURL = UIPasteboard.general.url
+                        }),
+                        secondaryButton: .cancel(Text("Cancel"))
+                    )
+                }
+        }
+    }
+
+    //MARK: - Methods
+
+    private func calculateLocation(for geometry: GeometryProxy, at location: CGPoint) -> CGPoint {
+        // Due to the EmojiArtDocumentChooser being visible the x coordinate is in the wrong coordinate system
+        // by ignoring the effects to x, we can position it correctly on the screen.
+        // var location = geometry.convert(location, from: .global)
+        var location = CGPoint(x: location.x, y: geometry.convert(location, from: .global).y)
+        location = CGPoint(x: location.x - geometry.size.width / 2, y: location.y - geometry.size.height / 2)
+        location = CGPoint(x: location.x - self.panOffset.width, y: location.y - self.panOffset.height)
+        location = CGPoint(x: location.x / self.zoomScale, y: location.y / self.zoomScale)
+        return location
+    }
+
+    private func pasteURL() {
+        if let url = UIPasteboard.general.url, url != self.document.backgroundURL {
+            self.showPasteAlert = AlertIdentifier(id: .confirm)
+        } else {
+            self.showPasteAlert = AlertIdentifier(id: .explain)
         }
     }
 
@@ -169,14 +227,14 @@ struct EmojiArtDocumentView: View {
     /// - Parameter emoji: The emoji that we want the zoom scale of
     /// - Returns: The zoom scale
     private func emojiZoomScale(for emoji: Emoji) -> CGFloat {
-        isEmojiSelected(emoji) ? steadyStateZoomScale * gestureZoomScale : zoomScale
+        isEmojiSelected(emoji) ? document.steadyStateZoomScale * gestureZoomScale : zoomScale
     }
 
     /// The zoom scale of the canvas
     ///
     /// We only want to enable zooming of the canvas when no emoji are selected
     private var zoomScale: CGFloat {
-        emojiSelected ? steadyStateZoomScale : steadyStateZoomScale * gestureZoomScale
+        document.steadyStateZoomScale * (emojiSelected ? 1 : gestureZoomScale)
     }
 
     /// A Magnification Gesture that scales the canvas
@@ -193,7 +251,7 @@ struct EmojiArtDocumentView: View {
                     self.document.scaleEmoji(emoji, by: finalGestureScale)
                 }
             } else {
-                self.steadyStateZoomScale *= finalGestureScale
+                self.document.steadyStateZoomScale *= finalGestureScale
             }
         }
     }
@@ -214,11 +272,11 @@ struct EmojiArtDocumentView: View {
     ///   - image: The image we wish to fit
     ///   - size: the size of the canvas
     private func zoomToFit(_ image: UIImage?, in size: CGSize) {
-        if let image = image, image.size.width > 0, image.size.height > 0 {
+        if let image = image, image.size.width > 0, image.size.height > 0, size.width > 0, size.height > 0 {
             let hZoom = size.width / image.size.width
             let vZoom = size.height / image.size.height
-            self.steadyStatePanOffset = .zero
-            self.steadyStateZoomScale = min(hZoom, vZoom)
+            self.document.steadyStatePanOffset = .zero
+            self.document.steadyStateZoomScale = min(hZoom, vZoom)
         }
     }
 
@@ -227,7 +285,7 @@ struct EmojiArtDocumentView: View {
 
     /// The offset that we pan by
     private var panOffset: CGSize {
-        (steadyStatePanOffset + gesturePanOffSet) * zoomScale
+        (document.steadyStatePanOffset + gesturePanOffSet) * zoomScale
     }
 
 
@@ -239,7 +297,7 @@ struct EmojiArtDocumentView: View {
                 gesturePanOffSet = latestDragGestureValue.translation / self.zoomScale
         }
         .onEnded { finalDragGestureValue in
-            self.steadyStatePanOffset = self.steadyStatePanOffset + (finalDragGestureValue.translation / self.zoomScale)
+            self.document.steadyStatePanOffset = self.document.steadyStatePanOffset + (finalDragGestureValue.translation / self.zoomScale)
         }
     }
 
